@@ -1,8 +1,8 @@
-# Vegetation Change and Climate Signal: Public PhD Code Portfolio
+# Vegetation Change and Climate Signal: Public PhD Code
 
 This repository is a curated public version of the analytical workflows that underpinned my PhD work on vegetation dynamics, phenology, and climate variability across sub-Saharan Africa.
 
-The notebooks are not intended to reproduce the original thesis analyses line-for-line. The original research relied on large gridded climate products, long satellite time-series, and institution-specific file structures that are not practical to publish as-is. Instead, this repo presents the core analytical logic in a compact, runnable, and transparent form using small sample datasets.
+The notebooks are not intended to reproduce the original thesis analyses. The original research relied on large gridded climate products, long satellite time-series, and institution-specific file structures that are not practical to publish as-is. Instead, this repo presents the core analytical logic in a compact, runnable, and transparent form using small sample datasets.
 
 The emphasis is on three things:
 
@@ -99,59 +99,6 @@ The most notable migration is from the legacy raster/spatial stack toward curren
 
 If you need strict reproducibility, I recommend using `renv` and creating a project-specific lockfile from your local environment once the notebooks are rendered successfully.
 
-
-
-## Suggested GitHub repository details
-
-**Repository name**  
-`phd-vegetation-climate-r`
-
-**Short description**  
-Public R notebooks demonstrating climate trend analysis, vegetation phenology, and spatial vegetation change workflows from my PhD research.
-
-**Topics**  
-`r`, `remote-sensing`, `climate`, `phenology`, `ndvi`, `geospatial`, `environmental-data-science`, `time-series`, `ecology`
-
-## Publishing this repository to GitHub
-
-After creating an empty repository on GitHub, run the following commands in the project folder:
-
-```bash
-git init
-git branch -M main
-git add .
-git commit -m "Initial public PhD portfolio release"
-git remote add origin https://github.com/YOUR-USERNAME/phd-vegetation-climate-r.git
-git push -u origin main
-```
-
-If you prefer GitHub CLI:
-
-```bash
-gh repo create phd-vegetation-climate-r --public --source=. --remote=origin --push
-```
-
-## Getting started
-
-Clone the repository and install the main packages:
-
-```r
-install.packages(c(
-  "tidyverse",
-  "terra",
-  "zoo",
-  "lubridate",
-  "broom",
-  "rmarkdown"
-))
-```
-
-To render all notebooks:
-
-```r
-source("render_all.R")
-```
-
 ## Intended use
 
 This repository is intended as a public code portfolio. It is designed to show how I approach environmental data analysis problems in R: moving from raw time-series or gridded data to interpretable outputs in a way that is structured, reproducible, and scientifically grounded.
@@ -165,6 +112,5 @@ The workflows in this repository draw on the same research themes presented in m
 - climate variability and change
 - spatial patterns of environmental change across semi-arid and sub-Saharan African systems
 
-## Contact
-
-If you are working in climate risk, remote sensing, environmental data science, or applied geospatial analytics, feel free to connect.
+## Reference
+Davis-Reddy, C.L. (2018) Assessing vegetation dynamics in response to climate variability and change across sub-Saharan Africa. PhD thesis, Stellenbosch University, South Africa.
