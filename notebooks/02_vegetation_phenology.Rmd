@@ -1,0 +1,164 @@
+---
+title: "Vegetation Phenology from a Monthly NDVI Time Series"
+subtitle: "A public notebook adapted from my PhD phenology workflows"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+```{r setup, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(lubridate)
+library(zoo)
+source("../R/helper_functions.R")
+theme_set(theme_minimal(base_size = 12))
+```
+
+## Overview
+
+One of the main questions in my PhD was not only whether vegetation was changing, but how the seasonal rhythm of growth was shifting through time. That is really what phenology work is about: turning a noisy vegetation index signal into a set of interpretable seasonal metrics.
+
+This notebook shows a compact version of that workflow using a single monthly NDVI-style series. The aim is to keep the method transparent. We smooth the signal, summarise each year, extract a few core metrics, and then look at how those metrics vary through time.
+
+## Data
+
+The sample data contain monthly NDVI and rainfall values for one demonstration site.
+
+```{r}
+ndvi_tbl <- readr::read_csv("../data/ndvi_monthly_sample.csv", show_col_types = FALSE) |>
+  mutate(
+    date = as.Date(date),
+    year = year(date),
+    month = month(date, label = TRUE, abbr = TRUE)
+  )
+
+glimpse(ndvi_tbl)
+```
+
+## Raw vegetation signal
+
+The first thing I usually want to see is the unprocessed signal. Even a simple line plot often tells you a lot about seasonality, amplitude, and noise.
+
+```{r fig.width=8, fig.height=4.8}
+ggplot(ndvi_tbl, aes(date, ndvi)) +
+  geom_line(linewidth = 0.7) +
+  geom_point(size = 1.4) +
+  labs(
+    title = "Monthly NDVI",
+    subtitle = "Raw demonstration series",
+    x = NULL,
+    y = "NDVI"
+  )
+```
+
+## Smoothing
+
+A short rolling mean is often enough to reduce obvious month-to-month noise while preserving the seasonal structure of the series.
+
+```{r}
+ndvi_tbl <- ndvi_tbl |>
+  mutate(
+    ndvi_smooth = zoo::rollmean(ndvi, 3, fill = NA, align = "center")
+  )
+
+ndvi_tbl |> 
+  select(date, ndvi, ndvi_smooth) |> 
+  slice_head(n = 10)
+```
+
+```{r fig.width=8, fig.height=4.8}
+ggplot(ndvi_tbl, aes(date)) +
+  geom_line(aes(y = ndvi), alpha = 0.5) +
+  geom_line(aes(y = ndvi_smooth), linewidth = 0.9) +
+  labs(
+    title = "Smoothed NDVI signal",
+    subtitle = "Three-month rolling mean used for annual metric extraction",
+    x = NULL,
+    y = "NDVI"
+  )
+```
+
+## Deriving annual phenology metrics
+
+For this public example I keep the metric set intentionally small and interpretable:
+
+- maximum NDVI
+- minimum NDVI
+- seasonal amplitude
+- month of peak greenness
+- cumulative NDVI
+
+```{r}
+phenology <- ndvi_tbl |>
+  filter(!is.na(ndvi_smooth)) |>
+  group_by(year) |>
+  summarise(
+    max_ndvi = max(ndvi_smooth, na.rm = TRUE),
+    min_ndvi = min(ndvi_smooth, na.rm = TRUE),
+    amplitude = max_ndvi - min_ndvi,
+    peak_month = month[which.max(ndvi_smooth)],
+    cumulative_ndvi = sum(ndvi_smooth, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+phenology
+```
+
+## Inter-annual variation in phenology
+
+```{r fig.width=8, fig.height=4.8}
+phenology |>
+  select(year, amplitude, cumulative_ndvi, max_ndvi) |>
+  pivot_longer(-year, names_to = "metric", values_to = "value") |>
+  ggplot(aes(year, value)) +
+  geom_line(linewidth = 0.8) +
+  geom_point(size = 1.8) +
+  facet_wrap(~metric, scales = "free_y", ncol = 1) +
+  labs(
+    title = "Year-to-year variation in phenology metrics",
+    x = NULL,
+    y = NULL
+  )
+```
+
+## Peak timing
+
+```{r fig.width=8, fig.height=4.2}
+phenology |>
+  ggplot(aes(year, forcats::fct_inorder(as.character(peak_month)))) +
+  geom_point(size = 2) +
+  labs(
+    title = "Timing of peak greenness",
+    x = NULL,
+    y = "Peak month"
+  )
+```
+
+## Linking the vegetation signal to rainfall
+
+In dryland and semi-arid systems, part of the phenology story is usually about rainfall timing and carry-over effects. The sample dataset is too small for a full lagged analysis, but it is still useful to look at the two series together.
+
+```{r fig.width=8, fig.height=4.8}
+ndvi_tbl |>
+  select(date, ndvi_smooth, rainfall_mm) |>
+  pivot_longer(-date, names_to = "variable", values_to = "value") |>
+  ggplot(aes(date, value)) +
+  geom_line(linewidth = 0.8) +
+  facet_wrap(~variable, scales = "free_y", ncol = 1) +
+  labs(
+    title = "Vegetation and rainfall through time",
+    x = NULL,
+    y = NULL
+  )
+```
+
+## Interpretation
+
+Phenology metrics are useful because they move the analysis beyond a simple green-up versus browning narrative. They allow you to ask whether vegetation is peaking earlier or later, whether the growing season is becoming more muted or more intense, and whether shifts in cumulative greenness are consistent with changing climate conditions.
+
+That distinction was important in my PhD work. In many landscapes, the biggest signal is not necessarily a dramatic shift in average greenness, but a change in the timing, duration, or amplitude of the seasonal cycle.
+
+## Relevance to the PhD work
+
+In the full thesis, phenology was derived from long satellite time-series over much larger spatial domains using more advanced preprocessing and seasonal extraction methods. This notebook keeps the workflow deliberately compact, but it reflects the same analytical mindset: extract a seasonal signal carefully, summarise it into metrics that are ecologically meaningful, and then interpret those metrics in relation to climate variability.

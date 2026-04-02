@@ -1,0 +1,137 @@
+---
+title: "Long-Term Vegetation Trends Across a Gridded Surface"
+subtitle: "A public notebook adapted from my PhD spatial trend workflows"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+```{r setup, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(terra)
+source("../R/helper_functions.R")
+theme_set(theme_minimal(base_size = 12))
+```
+
+## Overview
+
+A substantial part of my PhD involved working with satellite-derived vegetation products to understand where vegetation activity was increasing, decreasing, or remaining stable through time. The original analyses used large raster time-series, but for a public repository there is no need to ship heavy data just to demonstrate the method.
+
+This notebook shows the same analytical idea in a lighter form. A small gridded sample table is converted to a raster stack, a linear trend is estimated for each grid cell, and the resulting spatial pattern is mapped and summarised.
+
+## Data
+
+The sample dataset contains four fields:
+
+- `year`
+- `x`
+- `y`
+- `ndvi`
+
+Each row represents one grid cell in one year.
+
+```{r}
+veg_grid <- readr::read_csv("../data/vegetation_grid_sample.csv", show_col_types = FALSE)
+
+glimpse(veg_grid)
+```
+
+## Visualising the surface for one year
+
+A quick map of a single year is a useful starting point because it gives an immediate sense of the spatial structure in the data before any trend is calculated.
+
+```{r fig.width=7.2, fig.height=5.5}
+veg_grid |>
+  filter(year == min(year)) |>
+  ggplot(aes(x, y, fill = ndvi)) +
+  geom_tile() +
+  coord_equal() +
+  scale_y_reverse() +
+  labs(
+    title = paste("Vegetation surface in", min(veg_grid$year)),
+    x = "Grid x",
+    y = "Grid y",
+    fill = "NDVI"
+  )
+```
+
+## Converting the table to a raster stack
+
+```{r}
+years <- sort(unique(veg_grid$year))
+
+rasters <- lapply(years, function(yr) {
+  df <- veg_grid |>
+    filter(year == yr) |>
+    select(x, y, ndvi)
+
+  r <- rast(df, type = "xyz")
+  names(r) <- paste0("yr_", yr)
+  r
+})
+
+r_stack <- rast(rasters)
+r_stack
+```
+
+## Estimating a pixel-wise trend
+
+A linear trend is fitted independently for each cell. That gives a first-pass estimate of where vegetation activity has increased or decreased over time.
+
+```{r}
+time_index <- seq_len(nlyr(r_stack))
+
+slope_raster <- app(r_stack, fun = function(x) safe_lm_slope(x, time_index))
+names(slope_raster) <- "slope"
+
+slope_raster
+```
+
+```{r fig.width=7.2, fig.height=5.5}
+plot(slope_raster, main = "Linear trend slope in NDVI through time")
+```
+
+## Summarising the spatial pattern of change
+
+```{r}
+trend_df <- as.data.frame(slope_raster, xy = TRUE, na.rm = TRUE) |>
+  rename(slope = slope)
+
+trend_df |>
+  summarise(
+    mean_slope = mean(slope),
+    median_slope = median(slope),
+    min_slope = min(slope),
+    max_slope = max(slope),
+    prop_positive = mean(slope > 0)
+  )
+```
+
+These summary values are useful because they move the interpretation away from a purely visual reading of the map. In larger studies, they are often the first step toward comparing regions, land-cover types, or climate zones.
+
+## Mapping the trend surface with `ggplot2`
+
+```{r fig.width=7.2, fig.height=5.5}
+ggplot(trend_df, aes(x, y, fill = slope)) +
+  geom_tile() +
+  coord_equal() +
+  scale_y_reverse() +
+  labs(
+    title = "Spatial pattern of NDVI trend",
+    subtitle = "Positive values indicate greening; negative values indicate browning",
+    x = "Grid x",
+    y = "Grid y",
+    fill = "Slope"
+  )
+```
+
+## Interpretation
+
+What matters in this kind of analysis is not only whether the mean trend is positive or negative, but how that trend is distributed spatially. Environmental change is rarely uniform. Even over relatively small areas, the pattern can differ substantially because of local controls such as rainfall gradients, topography, land-use history, or soil differences.
+
+That was central to the PhD work as well. Spatial trend analysis was useful precisely because it made those regional contrasts visible rather than collapsing everything into a single average signal.
+
+## Relevance to the PhD work
+
+In the thesis, this type of workflow was applied to long satellite vegetation time-series to identify areas of greening and browning and to relate those patterns to climate variability and broader environmental change. The public notebook is much smaller, but it reflects the same approach: use transparent code to move from a time-series surface to a spatially explicit interpretation of change.

@@ -1,0 +1,140 @@
+---
+title: "Observed Climate Trends"
+subtitle: "A public notebook adapted from my PhD climate workflows"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+```{r setup, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(zoo)
+library(broom)
+source("../R/helper_functions.R")
+theme_set(theme_minimal(base_size = 12))
+```
+
+## Overview
+
+A recurring part of my PhD work was the need to move from large climate datasets to a small number of interpretable signals that could then be compared against vegetation response. In practice that usually meant checking the series carefully, calculating anomalies, smoothing short-term variability, and then asking whether there was evidence of directional change.
+
+This notebook shows that workflow in a simplified public form. The dataset is intentionally small, but the analytical logic is the same: start with a clean annual series, derive a few useful summaries, estimate the trend, and keep the interpretation tied to the environmental question.
+
+## Data
+
+The sample dataset included in this repository contains annual temperature and rainfall values:
+
+- `year`
+- `tmean_c`
+- `rainfall_mm`
+
+```{r}
+climate <- readr::read_csv("../data/climate_timeseries_sample.csv", show_col_types = FALSE)
+
+glimpse(climate)
+```
+
+## Initial checks
+
+Before fitting any trend, I usually start by checking for missing data, the overall range of values, and whether anything looks obviously implausible.
+
+```{r}
+summary(climate)
+
+climate |>
+  summarise(
+    n_years = n(),
+    missing_temp = sum(is.na(tmean_c)),
+    missing_rain = sum(is.na(rainfall_mm))
+  )
+```
+
+## Anomalies and rolling means
+
+For climate series, anomalies are often more informative than raw values because they show departures from the mean state more clearly. A short rolling mean is also useful for separating the longer signal from year-to-year noise.
+
+```{r}
+climate <- climate |>
+  mutate(
+    tmean_anomaly = yearly_anomaly(tmean_c),
+    rainfall_anomaly = yearly_anomaly(rainfall_mm),
+    tmean_ma5 = rolling_mean(tmean_c, k = 5),
+    rainfall_ma5 = rolling_mean(rainfall_mm, k = 5)
+  )
+
+climate |> slice_head(n = 8)
+```
+
+## Linear trend estimation
+
+For a first-pass assessment, a simple linear trend is often enough to establish direction and approximate rate of change. It does not capture all of the complexity in climate variability, but it remains a useful summary.
+
+```{r}
+temp_fit <- lm(tmean_c ~ year, data = climate)
+rain_fit <- lm(rainfall_mm ~ year, data = climate)
+
+broom::tidy(temp_fit)
+broom::tidy(rain_fit)
+```
+
+In this example the temperature signal is more coherent than the rainfall signal. That pattern is common in semi-arid systems: warming often emerges relatively clearly, while rainfall tends to remain dominated by strong inter-annual variability.
+
+## Mean annual temperature
+
+```{r fig.width=8, fig.height=4.8}
+ggplot(climate, aes(year, tmean_c)) +
+  geom_line(linewidth = 0.7) +
+  geom_point(size = 1.8) +
+  geom_line(aes(y = tmean_ma5), linewidth = 1) +
+  geom_smooth(method = "lm", se = FALSE, linetype = 2) +
+  labs(
+    title = "Mean annual temperature",
+    subtitle = "Annual values, 5-year rolling mean, and linear trend",
+    x = NULL,
+    y = "Temperature (°C)"
+  )
+```
+
+## Annual rainfall
+
+```{r fig.width=8, fig.height=4.8}
+ggplot(climate, aes(year, rainfall_mm)) +
+  geom_col(width = 0.8) +
+  geom_line(aes(y = rainfall_ma5), linewidth = 1) +
+  labs(
+    title = "Annual rainfall",
+    subtitle = "Annual totals with a 5-year rolling mean",
+    x = NULL,
+    y = "Rainfall (mm)"
+  )
+```
+
+## Anomaly view
+
+Looking at anomalies makes it easier to see runs of wetter/drier or warmer/cooler years relative to the mean.
+
+```{r fig.width=8, fig.height=4.8}
+climate |>
+  select(year, tmean_anomaly, rainfall_anomaly) |>
+  pivot_longer(-year, names_to = "variable", values_to = "anomaly") |>
+  ggplot(aes(year, anomaly)) +
+  geom_hline(yintercept = 0, linetype = 2) +
+  geom_col() +
+  facet_wrap(~variable, scales = "free_y", ncol = 1) +
+  labs(
+    title = "Climate anomalies relative to the series mean",
+    x = NULL,
+    y = "Anomaly"
+  )
+```
+
+## Interpretation
+
+The purpose of a workflow like this is not simply to report a slope. It is to provide a climatic context for ecological interpretation.
+
+In vegetation studies, the distinction matters: a relatively steady warming signal may act as a background pressure on ecosystems, while rainfall may shape the shorter-term pulses and collapses in vegetation activity from year to year. Even in this small demonstration dataset, that contrast is visible.
+
+## Relevance to the PhD work
+
+In the PhD, this type of analysis formed part of the broader effort to understand how observed climate variability and long-term change help explain patterns in vegetation productivity and phenology across space and time. The full thesis work used much larger gridded datasets and more extensive regional analyses, but the logic shown here is the same one I rely on in practice.
