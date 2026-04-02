@@ -5,7 +5,7 @@ type: software
 authors:
   - family-names: "Davis-Reddy"
     given-names: "Claire"
-repository-code: "https://github.com/YOUR-USERNAME/phd-vegetation-climate-r"
+repository-code: "https://github.com/clairedavis-reddy/phd-vegetation-climate-r"
 license: "MIT"
 abstract: >
   Public R notebooks demonstrating climate trend analysis, vegetation phenology,
