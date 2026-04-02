@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+title: "Vegetation Change and Climate Signal: Public PhD Code Portfolio"
+message: "If you use this repository, please cite it using the metadata below."
+type: software
+authors:
+  - family-names: "Davis-Reddy"
+    given-names: "Claire"
+repository-code: "https://github.com/YOUR-USERNAME/phd-vegetation-climate-r"
+license: "MIT"
+abstract: >
+  Public R notebooks demonstrating climate trend analysis, vegetation phenology,
+  and spatial vegetation change workflows adapted from PhD research on vegetation
+  dynamics and climate variability across sub-Saharan Africa.
+keywords:
+  - R
+  - remote sensing
+  - climate
+  - phenology
+  - NDVI
+  - geospatial analysis
+  - environmental data science
