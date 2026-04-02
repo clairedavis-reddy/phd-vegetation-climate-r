@@ -40,10 +40,6 @@ phd-remote-sensing-portfolio/
 ├── R/
 │   └── helper_functions.R
 ├── figures/
-├── legacy/
-│   └── script_inventory.md
-├── legacy_package_inventory.csv
-└── legacy_script_inventory.csv
 ```
 
 ## Included notebooks
